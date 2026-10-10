@@ -1,4 +1,6 @@
 import express from "express";
+import multer from "multer";
+import path from "node:path";
 import { normalizePiece, validateRequiredPieces } from "./domain/pieces.js";
 import { getMissingPieces, isDeliveryApproved } from "./domain/rules.js";
 import {
@@ -11,6 +13,16 @@ import {
 export function createApp() {
   const app = express();
   app.use(express.json());
+
+  const uploadDir = path.join(process.cwd(), "uploads");
+  const upload = multer({ dest: uploadDir });
+
+  app.get("/files/:nome", (req, res) => {
+    // basename blocks path traversal; unknown names fall through to 404.
+    res.sendFile(path.join(uploadDir, path.basename(req.params.nome)), (err) => {
+      if (err) res.status(404).json({ error: "file not found" });
+    });
+  });
 
   app.post("/campaigns", (req, res) => {
     const required = validateRequiredPieces(req.body?.requiredPieces);
@@ -44,12 +56,15 @@ export function createApp() {
     });
   });
 
-  app.post("/deliveries/:id/versions", (req, res) => {
+  app.post("/deliveries/:id/versions", upload.single("file"), (req, res) => {
     const delivery = deliveries.get(req.params.id);
     if (!delivery) return res.status(404).json({ error: "delivery not found" });
     const piece = normalizePiece(req.body?.piece);
     if (!piece) return res.status(400).json({ error: "invalid piece" });
-    const contentUrl = req.body?.contentUrl;
+    // Binary upload wins when present; otherwise fall back to the JSON path.
+    const contentUrl = req.file
+      ? `/files/${req.file.filename}`
+      : req.body?.contentUrl;
     if (typeof contentUrl !== "string" || contentUrl.trim() === "") {
       return res.status(400).json({ error: "invalid contentUrl" });
     }
