@@ -1,5 +1,7 @@
 import express from "express";
 import multer from "multer";
+import { randomUUID } from "node:crypto";
+import fs from "node:fs";
 import path from "node:path";
 import { normalizePiece, validateRequiredPieces } from "./domain/pieces.js";
 import { getMissingPieces, isDeliveryApproved } from "./domain/rules.js";
@@ -11,12 +13,22 @@ import {
   versions,
 } from "./store.js";
 
+// Uploads live next to the project root (one level above this module),
+// never under process.cwd(); UPLOAD_DIR overrides explicitly.
+export function resolveUploadDir(): string {
+  if (process.env.UPLOAD_DIR) return path.resolve(process.env.UPLOAD_DIR);
+  return path.resolve(__dirname, "..", "uploads");
+}
+
 export function createApp() {
   const app = express();
   app.use(express.json());
 
-  const uploadDir = path.join(process.cwd(), "uploads");
-  const upload = multer({ dest: uploadDir });
+  const uploadDir = resolveUploadDir();
+  fs.mkdirSync(uploadDir, { recursive: true });
+  // Memory storage: the file only hits disk after delivery/piece validation
+  // passes, so rejections never leave orphans behind.
+  const upload = multer({ storage: multer.memoryStorage() });
 
   app.get("/files/:nome", (req, res) => {
     // basename blocks path traversal; unknown names fall through to 404.
@@ -62,10 +74,13 @@ export function createApp() {
     if (!delivery) return res.status(404).json({ error: "delivery not found" });
     const piece = normalizePiece(req.body?.piece);
     if (!piece) return res.status(400).json({ error: "invalid piece" });
-    // Binary upload wins when present; otherwise fall back to the JSON path.
-    const contentUrl = req.file
-      ? `/files/${req.file.filename}`
-      : req.body?.contentUrl;
+    // Binary upload wins when present; persist only after validation passed.
+    let contentUrl: unknown = req.body?.contentUrl;
+    if (req.file) {
+      const name = `${randomUUID()}${path.extname(req.file.originalname)}`;
+      fs.writeFileSync(path.join(uploadDir, path.basename(name)), req.file.buffer);
+      contentUrl = `/files/${name}`;
+    }
     if (typeof contentUrl !== "string" || contentUrl.trim() === "") {
       return res.status(400).json({ error: "invalid contentUrl" });
     }
@@ -128,6 +143,14 @@ export function createApp() {
       return res.status(404).json({ error: "version not found" });
     }
     return res.json(comments.get(req.params.id) ?? []);
+  });
+
+  // Multer rejections (e.g. unexpected field) are client errors, not 500s.
+  app.use((err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err instanceof multer.MulterError) {
+      return res.status(400).json({ error: `invalid upload: ${err.code}` });
+    }
+    return next(err);
   });
 
   return app;

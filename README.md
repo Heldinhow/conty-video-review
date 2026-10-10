@@ -96,9 +96,10 @@ Submete uma versão com o binário real em vez de URL; `contentUrl` passa a apon
 
 ```bash
 echo 'dados do clipe' > clip.txt
-curl -X POST $B/deliveries/$DID/versions -F 'piece=capa' -F 'file=@clip.txt'
-# → 201 {"id":"6",...,"piece":"capa","contentUrl":"/files/<nome>","status":"pending"}
-curl $B/files/<nome>   # → 200, devolve o arquivo; nome desconhecido → 404
+curl -X POST "$B/deliveries/$DID/versions" -F 'piece=capa' -F 'file=@clip.txt'
+# → 201 {"id":"6",...,"piece":"capa","contentUrl":"/files/NOME","status":"pending"}
+# Troque NOME pelo nome devolvido em contentUrl:
+curl "$B/files/NOME"   # → 200, devolve o arquivo; nome desconhecido → 404
 ```
 
 Peça não exigida (`capa` aqui) é aceita com 200/201 mas nunca bloqueia nem desfaz a aprovação.
