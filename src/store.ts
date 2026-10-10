@@ -22,11 +22,20 @@ export interface Version {
   status: VersionStatus;
 }
 
+export interface Comment {
+  id: string;
+  versionId: string;
+  second: number;
+  body: string;
+}
+
 let counter = 1;
 export const campaigns = new Map<string, Campaign>();
 export const deliveries = new Map<string, Delivery>();
 // Append-only history; Delivery.currentByPiece.versionId is the live pointer.
 export const versions = new Map<string, Version>();
+// Comments keyed by version.id; new versions naturally list [].
+export const comments = new Map<string, Comment[]>();
 
 export function nextId(): string {
   return String(counter++);
@@ -36,5 +45,6 @@ export function resetStore(): void {
   campaigns.clear();
   deliveries.clear();
   versions.clear();
+  comments.clear();
   counter = 1;
 }
