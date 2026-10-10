@@ -118,4 +118,4 @@ Comentários aparecem só na versão onde foram feitos (versão nova lista `[]` 
 
 ## Nota de divulgação de IA
 
-O design e a implementação deste repositório foram produzidos por agentes de codificação por IA sob a direção do dono do repositório, e revisados pelo dono (Heldinhow), que também executou a suíte de testes e o fluxo manual de ponta a ponta descritos acima.
+O design e a implementação deste repositório foram produzidos por agentes de codificação por IA sob a direção do dono do repositório. O dono (Heldinhow) revisou a spec, corrigiu os gaps encontrados (vide auditoria: revogação restrita a peças exigidas, contrato em português, validações 400/404, histórico append-only), analisou o código gerado (incluindo o code-review final e seus 4 fixes), e executou a suíte de testes e o fluxo manual de ponta a ponta descritos acima.
