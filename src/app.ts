@@ -3,6 +3,7 @@ import { normalizePiece, validateRequiredPieces } from "./domain/pieces.js";
 import { getMissingPieces, isDeliveryApproved } from "./domain/rules.js";
 import {
   campaigns,
+  comments,
   deliveries,
   nextId,
   versions,
@@ -82,6 +83,30 @@ export function createApp() {
     const missing = getMissingPieces(campaign.requiredPieces, delivery.currentByPiece);
     if (missing.length > 0) return res.status(422).json({ missing });
     return res.json({ id: delivery.id, campaignId: delivery.campaignId, approved: true, missing: [] });
+  });
+
+  app.post("/versions/:id/comments", (req, res) => {
+    const version = versions.get(req.params.id);
+    if (!version) return res.status(404).json({ error: "version not found" });
+    const second = req.body?.second;
+    if (typeof second !== "number" || !Number.isFinite(second) || second < 0) {
+      return res.status(400).json({ error: "invalid second" });
+    }
+    const body = req.body?.body;
+    if (typeof body !== "string" || body.trim() === "") {
+      return res.status(400).json({ error: "invalid body" });
+    }
+    const id = nextId();
+    const comment = { id, versionId: version.id, second, body };
+    comments.set(version.id, [...(comments.get(version.id) ?? []), comment]);
+    return res.status(201).json(comment);
+  });
+
+  app.get("/versions/:id/comments", (req, res) => {
+    if (!versions.get(req.params.id)) {
+      return res.status(404).json({ error: "version not found" });
+    }
+    return res.json(comments.get(req.params.id) ?? []);
   });
 
   return app;
