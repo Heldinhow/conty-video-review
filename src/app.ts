@@ -60,6 +60,12 @@ export function createApp() {
     return res.status(201).json({ id, deliveryId: delivery.id, piece, contentUrl, status: "pending" });
   });
 
+  app.get("/versions/:id", (req, res) => {
+    const version = versions.get(req.params.id);
+    if (!version) return res.status(404).json({ error: "version not found" });
+    return res.json({ id: version.id, deliveryId: version.deliveryId, piece: version.piece, contentUrl: version.contentUrl, status: version.status });
+  });
+
   app.post("/versions/:id/approve", (req, res) => {
     const version = versions.get(req.params.id);
     if (!version) return res.status(404).json({ error: "version not found" });
